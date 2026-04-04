@@ -174,11 +174,6 @@
         // morph = max(barMs * 0.75, 1500ms). We use 1600ms as safe default.
         const MORPH_HOLD_MS = 1600;
 
-        function isFamilyChange(fromZone, toZone) {
-            if (fromZone < 1 || fromZone > 35) return true;
-            return ZONE_FAMILIES[fromZone] !== ZONE_FAMILIES[toZone];
-        }
-
         // ── Morph debounce state ──────────────────────────────────────────
         // Tracks whether the patch is mid-morph and blocks rapid zone changes
         let morphBusy       = false;
@@ -186,7 +181,6 @@
         let morphBarTimer   = null;
         let pendingZone     = null;   // next zone queued while morphing
         let lastSentZone    = 0;
-        let lastSentFamily  = 0;
 
         function isFamilyChange(fromZone, toZone) {
             if (fromZone < 1 || fromZone > 35) return true;
