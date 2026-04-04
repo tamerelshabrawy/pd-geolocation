@@ -12,7 +12,6 @@
         <!-- Always BEFORE pd4web.js (it update COI) -->
         <script src="./pd4web.threads.js"></script>
         <!-- Main modules -->
-
         <script src="./pd4web.js"></script>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
         <style>
@@ -22,33 +21,24 @@
                     --fg: rgb(0, 0, 0, 0.9);
                 }
             }
-
             @media (prefers-color-scheme: dark) {
                 :root {
                     --bg: rgb(48, 48, 48);
                     --fg: rgb(255, 255, 255, 0.9);
-
-                    .pd4web-sound-switch {
-                        filter: invert(1);
-                    }
                 }
+                .pd4web-sound-switch { filter: invert(1); }
             }
-
             body {
                 font-size: 10px;
                 touch-action: pan-x pan-y;
                 background-color: var(--bg);
             }
-
-            span {
-                color: @fg;
-            }
-
+            span { color: var(--fg); }
             #wasm-loader {
-                position: fixed; /* fica fixo na tela */
-                top: 10px; /* 50% da altura */
-                left: 50%; /* 50% da largura */
-                transform: translate(-50%, -50%); /* centraliza exatamente */
+                position: fixed;
+                top: 10px;
+                left: 50%;
+                transform: translate(-50%, -50%);
                 display: flex;
                 flex-direction: column;
                 align-items: center;
@@ -57,43 +47,26 @@
                 padding: 8px;
                 border-radius: 5px;
                 background-color: rgba(0, 0, 0, 0.05);
-                box-shadow:
-                    rgba(14, 30, 37, 0.12) 0px 2px 4px 0px,
-                    rgba(14, 30, 37, 0.32) 0px 2px 16px 0px;
+                box-shadow: rgba(14, 30, 37, 0.12) 0px 2px 4px 0px, rgba(14, 30, 37, 0.32) 0px 2px 16px 0px;
             }
-
-            /* Status texto menor e centralizado */
             #status {
                 font-size: 10px;
                 text-align: center;
                 margin-bottom: 4px;
                 color: var(--fg);
             }
-
-            /* Progress bar menor */
-            #progress {
-                width: 150px;
-                height: 8px;
-                border-radius: 4px;
-            }
-
+            #progress { width: 150px; height: 8px; border-radius: 4px; }
             .pd4web-patch-canvas {
                 tabindex: 0;
                 margin: 10px auto;
                 display: flex;
                 border-radius: 5px;
-                box-shadow:
-                    rgba(14, 30, 37, 0.12) 0px 2px 4px 0px,
-                    rgba(14, 30, 37, 0.32) 0px 2px 16px 0px;
+                box-shadow: rgba(14, 30, 37, 0.12) 0px 2px 4px 0px, rgba(14, 30, 37, 0.32) 0px 2px 16px 0px;
             }
-
             .pd4web-patch-canvas:focus {
-                box-shadow:
-                    rgba(100, 30, 37, 0.12) 0px 2px 4px 0px,
-                    rgba(100, 30, 37, 0.32) 0px 2px 16px 0px;
+                box-shadow: rgba(100, 30, 37, 0.12) 0px 2px 4px 0px, rgba(100, 30, 37, 0.32) 0px 2px 16px 0px;
                 outline: none;
             }
-
             .pd4web-sound-switch {
                 display: flex;
                 justify-content: center;
@@ -103,44 +76,39 @@
                 margin: 0 auto;
                 transform: none;
             }
+            @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+            @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
+            .pulse-icon { animation: pulse 1s infinite; }
 
-            /* Animation */
-            @keyframes spin {
-                0% {
-                    transform: rotate(0deg);
-                }
-                100% {
-                    transform: rotate(360deg);
-                }
-            }
-
-            @keyframes pulse {
-                0% {
-                    transform: scale(1);
-                }
-                50% {
-                    transform: scale(1.2);
-                }
-                100% {
-                    transform: scale(1);
-                }
-            }
-            .pulse-icon {
-                animation: pulse 1s infinite;
+            /* ── GPS overlay ── */
+            #gps-overlay {
+                position: fixed;
+                bottom: 12px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: rgba(0,0,0,0.65);
+                color: #fff;
+                font-size: 11px;
+                padding: 6px 12px;
+                border-radius: 20px;
+                z-index: 999;
+                text-align: center;
+                pointer-events: none;
             }
         </style>
     </head>
     <body>
-        <div id="wasm-loader" style="text-align: center; margin: 10px">
+        <div id="wasm-loader" style="text-align:center;margin:10px">
             <span id="status">Loading...</span>
-            <progress id="progress" value="0" max="100" style="width: 300px"></progress>
+            <progress id="progress" value="0" max="100" style="width:300px"></progress>
         </div>
-
-        <!-- All the styles are in the pd4web.style.css -->
         <span class="pd4web-sound-switch" id="Pd4WebAudioSwitch"></span>
         <canvas tabindex="0" class="pd4web-patch-canvas" id="Pd4WebCanvas"></canvas>
+        <div id="gps-overlay">📍 Waiting for GPS...</div>
+
+        <!-- ── WASM loader ── -->
         <script>
-            const statusElement = document.getElementById("status");
+            const statusElement   = document.getElementById("status");
             const progressElement = document.getElementById("progress");
             function fetchWithProgress(url) {
                 return new Promise((resolve, reject) => {
@@ -154,21 +122,175 @@
                             statusElement.textContent = `Downloading WASM... ${percent}%`;
                         }
                     };
-
                     xhr.onload = () => {
-                        if (xhr.status === 200) {
-                            resolve(xhr.response);
-                        } else {
-                            reject(new Error(`Failed to load ${url}, status ${xhr.status}`));
-                        }
+                        if (xhr.status === 200) resolve(xhr.response);
+                        else reject(new Error(`Failed to load ${url}, status ${xhr.status}`));
                     };
-
                     xhr.onerror = () => reject(new Error(`Network error loading ${url}`));
                     xhr.send();
                 });
             }
         </script>
 
+        <!-- ── Geolocation + pd bridge ── -->
+        <script>
+        // ───────────���─────────────────────────────────────────────────────────
+        // ROUTE BORDERS  (from geo-gps/data/alexandria_pedestrian_route.geojson)
+        // outer border = left_side, inner border = right_side
+        // coordinates are [longitude, latitude]
+        // ─────────────────────────────────────────────────────────────────────
+        const OUTER_BORDER = [
+            [29.8985742, 31.2008868],[29.8990142, 31.199963],[29.8990518, 31.1999074],
+            [29.8991099, 31.1998557],[29.899243,  31.1997604],[29.8994968, 31.1995653],
+            [29.9002479, 31.1980143],[29.9006458, 31.1971429],[29.9009235, 31.19653],
+            [29.9010238, 31.1962815],[29.9011116, 31.1960526],[29.9011711, 31.1959355],
+            [29.9023496, 31.1963765],[29.9042378, 31.1970997],[29.9045246, 31.1972019],
+            [29.9047666, 31.1973246],[29.9035848, 31.1982192],[29.9025919, 31.1990843],
+            [29.902556,  31.1991073],[29.9007485, 31.200883], [29.9004258, 31.2011948],
+            [29.9000345, 31.2015219],[29.8997148, 31.2018949],[29.8987045, 31.2014517],
+            [29.8982799, 31.2012772],[29.898292,  31.2010923],[29.8984827, 31.2009557],
+            [29.8985562, 31.2009262],[29.8985764, 31.2008867]
+        ];
+
+        const INNER_BORDER = [
+            [29.9042715, 31.1971886],[29.9040266, 31.1970967],[29.9038177, 31.1970196],
+            [29.9035612, 31.1969195],[29.9032994, 31.1968217],[29.9030252, 31.1967192],
+            [29.9026919, 31.1965935],[29.90116,   31.1960329],[29.9011093, 31.1961634],
+            [29.9010739, 31.1962588],[29.9010204, 31.1963777],[29.9009838, 31.1964567],
+            [29.9009196, 31.1966127],[29.9008214, 31.1968278],[29.900729,  31.197033],
+            [29.9005354, 31.197452], [29.9004363, 31.1976696],[29.9003473, 31.1978637],
+            [29.9002448, 31.1980737],[29.9000878, 31.1984075],[29.8995214, 31.199621],
+            [29.8993131, 31.1997794],[29.8991065, 31.1999369],[29.899022,  31.2001435],
+            [29.8988634, 31.2004477],[29.8985785, 31.2010352],[29.8988268, 31.2011214],
+            [29.8992918, 31.2012976],[29.8995806, 31.201405], [29.8996133, 31.2010997],
+            [29.9003518, 31.2009563],[29.900595,  31.2007425],[29.9008607, 31.2005171],
+            [29.9011287, 31.200284], [29.9013854, 31.2000587],[29.9015999, 31.1998636],
+            [29.9019591, 31.1995458],[29.9019591, 31.1995458],[29.9022687, 31.1992511],
+            [29.9025586, 31.1989869],[29.9026791, 31.1988579],[29.902781,  31.1987394],
+            [29.9029072, 31.1985722],[29.9030305, 31.1984446],[29.9032732, 31.1982327],
+            [29.9034668, 31.1981114],[29.9035805, 31.1980146],[29.9037191, 31.197871],
+            [29.903924,  31.1976572],[29.9041345, 31.1974428],[29.9042697, 31.1971939],
+            [29.9042702, 31.1971939]
+        ];
+
+        // ─────────────────────────────────────────────────────────────────────
+        // Build a closed polygon from the two borders so we can do
+        // point-in-polygon testing: outer → inner (reversed) → close
+        // ─────────────────────────────────────────────────────────────────────
+        function buildZonePolygon(outer, inner) {
+            return outer.concat(inner.slice().reverse()).concat([outer[0]]);
+        }
+        const ZONE_POLYGON = buildZonePolygon(OUTER_BORDER, INNER_BORDER);
+
+        // Ray-casting point-in-polygon (works fine for small geographic areas)
+        function pointInPolygon(lon, lat, polygon) {
+            let inside = false;
+            for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+                const xi = polygon[i][0], yi = polygon[i][1];
+                const xj = polygon[j][0], yj = polygon[j][1];
+                const intersect = ((yi > lat) !== (yj > lat)) &&
+                    (lon < (xj - xi) * (lat - yi) / (yj - yi) + xi);
+                if (intersect) inside = !inside;
+            }
+            return inside;
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // Progress along route: project the user's position onto the
+        // inner border polyline (used as the route spine) and compute
+        // how far along it they are as a value 0.0–1.0
+        // ─────────────────────────────────────────────────────────────────────
+        function dist2(ax, ay, bx, by) {
+            const dx = ax - bx, dy = ay - by;
+            return dx * dx + dy * dy;
+        }
+
+        function projectOntoPolyline(lon, lat, polyline) {
+            let bestT = 0, bestDist = Infinity, bestAccum = 0;
+            let totalLen = 0;
+            const segLens = [];
+            for (let i = 0; i < polyline.length - 1; i++) {
+                const d = Math.sqrt(dist2(polyline[i][0], polyline[i][1],
+                                          polyline[i+1][0], polyline[i+1][1]));
+                segLens.push(d);
+                totalLen += d;
+            }
+            let accum = 0;
+            for (let i = 0; i < polyline.length - 1; i++) {
+                const ax = polyline[i][0],   ay = polyline[i][1];
+                const bx = polyline[i+1][0], by = polyline[i+1][1];
+                const dx = bx - ax, dy = by - ay;
+                const lenSq = dx * dx + dy * dy;
+                let t = 0;
+                if (lenSq > 0) {
+                    t = ((lon - ax) * dx + (lat - ay) * dy) / lenSq;
+                    t = Math.max(0, Math.min(1, t));
+                }
+                const px = ax + t * dx, py = ay + t * dy;
+                const d = dist2(lon, lat, px, py);
+                if (d < bestDist) {
+                    bestDist = d;
+                    bestAccum = accum + t * segLens[i];
+                }
+                accum += segLens[i];
+            }
+            return totalLen > 0 ? bestAccum / totalLen : 0;
+        }
+
+        // Map progress 0.0–1.0 → zone integer 1–35
+        function progressToZone(progress) {
+            return Math.min(35, Math.max(1, Math.round(progress * 34) + 1));
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // GPS overlay helper
+        // ─────────────────────────────────────────────────────────────────────
+        const gpsOverlay = document.getElementById("gps-overlay");
+        function setOverlay(text) { gpsOverlay.textContent = text; }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // Start watching GPS — called once pd is ready
+        // ─────────────────────────────────────────────────────────────────────
+        function startGeolocation(Pd4Web) {
+            if (!("geolocation" in navigator)) {
+                setOverlay("⚠️ GPS not available in this browser");
+                return;
+            }
+            setOverlay("📍 Acquiring GPS...");
+
+            navigator.geolocation.watchPosition(
+                (pos) => {
+                    const lon = pos.coords.longitude;
+                    const lat = pos.coords.latitude;
+                    const acc = Math.round(pos.coords.accuracy);
+
+                    const inside = pointInPolygon(lon, lat, ZONE_POLYGON);
+
+                    if (inside) {
+                        const progress = projectOntoPolyline(lon, lat, INNER_BORDER);
+                        const zone     = progressToZone(progress);
+                        Pd4Web.sendFloat("zone", zone);
+                        setOverlay(`✅ Zone ${zone}/35  |  ±${acc}m`);
+                    } else {
+                        // Outside the route — send 0 so pd knows
+                        Pd4Web.sendFloat("zone", 0);
+                        setOverlay(`🚶 Outside route  |  ±${acc}m`);
+                    }
+                },
+                (err) => {
+                    setOverlay(`⚠️ GPS error: ${err.message}`);
+                    console.warn("Geolocation error", err);
+                },
+                {
+                    enableHighAccuracy: true,
+                    maximumAge: 2000,
+                    timeout: 15000
+                }
+            );
+        }
+        </script>
+
+        <!-- ── Boot pd4web then start GPS ── -->
         <script>
             fetchWithProgress("./pd4web.wasm")
                 .then((wasmBuffer) => {
@@ -179,24 +301,18 @@
                             soundToggleId: "Pd4WebAudioSwitch",
                         });
                         const wasmLoader = document.getElementById("wasm-loader");
-                        statusElement.style.display = "none";
+                        statusElement.style.display  = "none";
                         progressElement.style.display = "none";
-                        wasmLoader.style.display = "none";
+                        wasmLoader.style.display      = "none";
+
+                        // Start GPS after pd is booted
+                        startGeolocation(Pd4Web);
                     });
                 })
                 .catch((err) => {
                     statusElement.textContent = "Failed to load WASM.";
                     console.error(err);
                 });
-        </script>
-        <script>
-            // Create an App (installable using PWA ( https://en.wikipedia.org/wiki/Progressive_web_app ))
-            // if ("serviceWorker" in navigator) {
-            //     navigator.serviceWorker
-            //         .register("pd4web.sw.js")
-            //         .then(() => console.log("Service Worker registered"))
-            //         .catch((err) => console.error("Service Worker registration failed:", err));
-            // }
         </script>
     </body>
 </html>
