@@ -19,7 +19,7 @@
             *, *::before, *::after { box-sizing: border-box; }
             body { margin: 0; background: var(--bg); font-family: system-ui, sans-serif; touch-action: pan-x pan-y; }
 
-            /* ── wasm loader ── */
+            /* wasm loader */
             #wasm-loader {
                 position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
                 display: flex; flex-direction: column; align-items: center; gap: 8px;
@@ -29,14 +29,14 @@
             #status { font-size: 12px; color: var(--fg); }
             #progress { width: 200px; height: 8px; border-radius: 4px; }
 
-            /* ── pd canvas ── */
+            /* pd canvas */
             .pd4web-sound-switch { display: flex; justify-content: center; align-items: center; width: 32px; height: 32px; margin: 8px auto; }
             .pd4web-patch-canvas { display: block; margin: 8px auto; border-radius: 6px; box-shadow: 0 2px 12px rgba(0,0,0,0.25); }
             .pd4web-patch-canvas:focus { outline: 2px solid var(--accent); }
 
-            /* ── GPS status pill ── */
+            /* GPS status pill */
             #gps-pill {
-                position: fixed; bottom: 180px; left: 50%; transform: translateX(-50%);
+                position: fixed; bottom: 210px; left: 50%; transform: translateX(-50%);
                 background: var(--panel); color: #fff; font-size: 12px; font-weight: 600;
                 padding: 7px 16px; border-radius: 24px; z-index: 900;
                 pointer-events: none; white-space: nowrap; letter-spacing: 0.3px;
@@ -45,8 +45,9 @@
             #gps-pill.inside  { background: rgba(22,160,60,0.88); }
             #gps-pill.outside { background: rgba(0,0,0,0.72); }
             #gps-pill.error   { background: rgba(200,40,40,0.88); }
+            #gps-pill.morphing { background: rgba(180,120,0,0.88); }
 
-            /* ── Debug panel ── */
+            /* Debug panel */
             #debug-panel {
                 position: fixed; bottom: 0; left: 0; right: 0;
                 background: var(--panel); color: #fff;
@@ -72,8 +73,13 @@
 
             /* zone slider */
             #slider-row { display: flex; flex-direction: column; gap: 6px; }
-            #slider-row label { font-size: 11px; color: #ccc; display: flex; justify-content: space-between; }
-            #slider-row label span { color: #fff; font-size: 14px; font-weight: 800; }
+            #slider-row label { font-size: 11px; color: #ccc; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+            #slider-row label .zone-num { color: #fff; font-size: 16px; font-weight: 800; min-width: 28px; text-align: right; }
+            #slider-row label .morph-badge {
+                font-size: 10px; font-weight: 700; background: #f9a825; color: #111;
+                padding: 2px 7px; border-radius: 10px; opacity: 0; transition: opacity 0.2s;
+            }
+            #slider-row label .morph-badge.visible { opacity: 1; }
             #zone-slider {
                 width: 100%; -webkit-appearance: none; appearance: none;
                 height: 6px; border-radius: 3px; background: #555; outline: none;
@@ -85,43 +91,47 @@
             }
             #zone-slider:disabled { opacity: 0.3; pointer-events: none; }
 
-            /* zone row buttons */
-            #zone-btns {
-                display: flex; flex-wrap: wrap; gap: 4px;
+            /* morph progress bar */
+            #morph-bar-wrap {
+                height: 4px; background: #333; border-radius: 2px; overflow: hidden;
+                transition: opacity 0.3s; opacity: 0;
             }
+            #morph-bar-wrap.visible { opacity: 1; }
+            #morph-bar { height: 100%; width: 0%; background: #f9a825; transition: width 0.1s linear; border-radius: 2px; }
+
+            /* zone buttons */
+            #zone-btns { display: flex; flex-wrap: wrap; gap: 4px; }
             .z-btn {
                 flex: 0 0 calc(14.28% - 4px); padding: 5px 0;
                 border: none; border-radius: 5px; font-size: 10px; font-weight: 700;
                 background: #444; color: #ccc; cursor: pointer; text-align: center;
-                transition: background 0.15s, color 0.15s;
+                transition: background 0.15s, color 0.15s, opacity 0.2s;
             }
             .z-btn:disabled { opacity: 0.25; pointer-events: none; }
             .z-btn.active { background: #f9a825; color: #111; }
+            .z-btn.pending { background: #1a73e8; color: #fff; }
+            .z-btn.cooling { opacity: 0.45; }
 
             /* log */
             #pd-log {
                 font-size: 10px; color: #7f8; background: rgba(0,0,0,0.4);
-                border-radius: 6px; padding: 6px 8px; max-height: 52px; overflow-y: auto;
+                border-radius: 6px; padding: 6px 8px; max-height: 48px; overflow-y: auto;
                 font-family: monospace; white-space: pre-wrap;
             }
         </style>
     </head>
     <body>
 
-        <!-- WASM loader -->
         <div id="wasm-loader">
             <span id="status">Loading patch…</span>
             <progress id="progress" value="0" max="100"></progress>
         </div>
 
-        <!-- pd4web controls -->
         <span class="pd4web-sound-switch" id="Pd4WebAudioSwitch"></span>
         <canvas tabindex="0" class="pd4web-patch-canvas" id="Pd4WebCanvas"></canvas>
 
-        <!-- GPS status pill -->
         <div id="gps-pill" class="outside">📍 Waiting for GPS…</div>
 
-        <!-- Debug / Simulation panel -->
         <div id="debug-panel">
             <h3>🎛 Zone Control &nbsp;<span id="debug-mode-label">GPS MODE</span></h3>
 
@@ -131,22 +141,22 @@
             </div>
 
             <div id="slider-row">
-                <label>Zone <span id="zone-label">—</span></label>
+                <label>
+                    Zone <span class="zone-num" id="zone-label">—</span>
+                    <span class="morph-badge" id="morph-badge">⏳ morphing…</span>
+                </label>
                 <input type="range" id="zone-slider" min="1" max="35" step="1" value="1" disabled
                        oninput="onSliderInput(this.value)" />
+                <div id="morph-bar-wrap"><div id="morph-bar"></div></div>
             </div>
 
             <div id="zone-btns"></div>
-
             <div id="pd-log">— patch log —</div>
         </div>
 
-        <!-- ═══════════════════════════════════════════════════════════════ -->
-        <!--  GEOLOCATION + PD BRIDGE                                       -->
-        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <!-- ═══════════════════════════════════ GEOLOCATION + PD BRIDGE ═══════════════════════════════════ -->
         <script>
-        // ── Route borders (from geo-gps/data/alexandria_pedestrian_route.geojson) ──
-        // [longitude, latitude]
+        // ── Route borders [longitude, latitude] ──
         const OUTER_BORDER = [
             [29.8985742,31.2008868],[29.8990142,31.199963],[29.8990518,31.1999074],
             [29.8991099,31.1998557],[29.899243,31.1997604],[29.8994968,31.1995653],
@@ -180,10 +190,29 @@
             [29.9042702,31.1971939]
         ];
 
-        // Build zone polygon: outer → reversed inner → close
+        // Zone polygon: outer + reversed inner + close
         const ZONE_POLYGON = OUTER_BORDER
             .concat(INNER_BORDER.slice().reverse())
             .concat([OUTER_BORDER[0]]);
+
+        // ── Zone-to-scene-family map (from alexandria_zone_scene_map.pd) ──
+        // Zone families: zones 1-2 = fam 1, 3-5 = fam 2, 6-7 = fam 3,
+        // 8-9 = fam 4, 10-11 = fam 5, 12-13 = fam 6, 14-27 = fam 7, 28-35 = fam 8
+        const ZONE_FAMILIES = [
+            0,  // placeholder (zones are 1-indexed)
+            1,1,        // zones 1-2
+            2,2,2,      // zones 3-5
+            3,3,        // zones 6-7
+            4,4,        // zones 8-9
+            5,5,        // zones 10-11
+            6,6,        // zones 12-13
+            7,7,7,7,7,7,7,7,7,7,7,7,7,7,  // zones 14-27
+            8,8,8,8,8,8,8,8               // zones 28-35
+        ];
+
+        // Morph hold time per family crossing (ms) — matches alexandria_zone_scene_player.pd
+        // morph = max(barMs * 0.75, 1500ms). We use 1600ms as safe default.
+        const MORPH_HOLD_MS = 1600;
 
         // Ray-casting point-in-polygon
         function pointInPolygon(lon, lat, poly) {
@@ -200,23 +229,20 @@
 
         // Project lon/lat onto polyline → 0..1 progress
         function projectOntoPolyline(lon, lat, line) {
-            const segs = [];
-            let total = 0;
+            const segs = []; let total = 0;
             for (let i = 0; i < line.length - 1; i++) {
                 const dx = line[i+1][0]-line[i][0], dy = line[i+1][1]-line[i][1];
-                const len = Math.sqrt(dx*dx + dy*dy);
-                segs.push(len);
-                total += len;
+                const len = Math.sqrt(dx*dx + dy*dy); segs.push(len); total += len;
             }
             let best = Infinity, bestAccum = 0, accum = 0;
             for (let i = 0; i < line.length - 1; i++) {
-                const ax=line[i][0], ay=line[i][1], bx=line[i+1][0], by=line[i+1][1];
-                const dx=bx-ax, dy=by-ay, lenSq=dx*dx+dy*dy;
-                let t = lenSq > 0 ? Math.max(0,Math.min(1,((lon-ax)*dx+(lat-ay)*dy)/lenSq)) : 0;
-                const px=ax+t*dx, py=ay+t*dy;
+                const ax=line[i][0],ay=line[i][1],bx=line[i+1][0],by=line[i+1][1];
+                const dx=bx-ax,dy=by-ay,lsq=dx*dx+dy*dy;
+                const t=lsq>0?Math.max(0,Math.min(1,((lon-ax)*dx+(lat-ay)*dy)/lsq)):0;
+                const px=ax+t*dx,py=ay+t*dy;
                 const d=(lon-px)*(lon-px)+(lat-py)*(lat-py);
-                if (d < best) { best=d; bestAccum=accum+t*segs[i]; }
-                accum += segs[i];
+                if(d<best){best=d;bestAccum=accum+t*segs[i];}
+                accum+=segs[i];
             }
             return total > 0 ? bestAccum / total : 0;
         }
@@ -226,11 +252,113 @@
             return Math.min(35, Math.max(1, Math.round(p * 34) + 1));
         }
 
+        // ── Morph debounce state ──────────────────────────────────────────
+        // Tracks whether the patch is mid-morph and blocks rapid zone changes
+        let morphBusy       = false;
+        let morphTimer      = null;
+        let morphBarTimer   = null;
+        let pendingZone     = null;   // next zone queued while morphing
+        let lastSentZone    = 0;
+        let lastSentFamily  = 0;
+
+        function isFamilyChange(fromZone, toZone) {
+            if (fromZone < 1 || fromZone > 35) return true;
+            return ZONE_FAMILIES[fromZone] !== ZONE_FAMILIES[toZone];
+        }
+
+        // Animate the morph progress bar
+        function startMorphBar(durationMs) {
+            const bar = document.getElementById('morph-bar');
+            const wrap = document.getElementById('morph-bar-wrap');
+            const badge = document.getElementById('morph-badge');
+            clearInterval(morphBarTimer);
+            bar.style.width = '0%';
+            wrap.classList.add('visible');
+            badge.classList.add('visible');
+            const steps = 30, interval = durationMs / steps;
+            let step = 0;
+            morphBarTimer = setInterval(() => {
+                step++;
+                bar.style.width = Math.min(100, (step / steps) * 100) + '%';
+                if (step >= steps) {
+                    clearInterval(morphBarTimer);
+                    setTimeout(() => {
+                        wrap.classList.remove('visible');
+                        badge.classList.remove('visible');
+                        bar.style.width = '0%';
+                    }, 200);
+                }
+            }, interval);
+        }
+
+        // Core send — respects morph hold time
+        function sendZone(z, source) {
+            z = Math.min(35, Math.max(1, Math.round(z)));
+            if (!PD4WEB) { log('⚠ pd not ready'); return; }
+
+            // If already morphing, queue the new zone instead of sending immediately
+            if (morphBusy) {
+                pendingZone = z;
+                // Mark button as pending
+                document.querySelectorAll('.z-btn').forEach(b => b.classList.remove('pending'));
+                const pb = document.getElementById('zb-' + z);
+                if (pb) pb.classList.add('pending');
+                log(`⏳ queued zone ${z} (morph in progress) [${source}]`);
+                return;
+            }
+
+            _doSendZone(z, source);
+        }
+
+        function _doSendZone(z, source) {
+            const changing = isFamilyChange(lastSentZone, z);
+
+            PD4WEB.sendFloat('zone', z);
+
+            // Sync UI
+            slider.value = z;
+            zoneLabel.textContent = z;
+            document.querySelectorAll('.z-btn').forEach(b => {
+                b.classList.remove('active');
+                b.classList.remove('pending');
+            });
+            const ab = document.getElementById('zb-' + z);
+            if (ab) ab.classList.add('active');
+
+            lastSentZone = z;
+
+            log(`→ zone ${z}${changing ? ' 🔀 family change' : ''}  [${source}]`);
+
+            // If this is a family change, engage morph hold
+            if (changing) {
+                morphBusy = true;
+                pill.className = 'morphing';
+                pill.textContent = `⏳ Morphing to zone ${z}…`;
+                startMorphBar(MORPH_HOLD_MS);
+                clearTimeout(morphTimer);
+                morphTimer = setTimeout(() => {
+                    morphBusy = false;
+                    pill.className = MODE === 'sim' ? 'outside' : (lastSentZone > 0 ? 'inside' : 'outside');
+                    if (MODE === 'sim') {
+                        pill.textContent = `🎚 Zone ${lastSentZone}/35 — ready`;
+                    }
+                    log(`✅ Morph done (zone ${lastSentZone})`);
+                    // Send queued zone if any
+                    if (pendingZone !== null && pendingZone !== lastSentZone) {
+                        const next = pendingZone;
+                        pendingZone = null;
+                        _doSendZone(next, 'queued');
+                    } else {
+                        pendingZone = null;
+                    }
+                }, MORPH_HOLD_MS);
+            }
+        }
+
         // ── UI state ──────────────────────────────────────────────────────
-        let MODE       = 'gps';   // 'gps' | 'sim'
-        let PD4WEB     = null;
-        let GEO_WATCH  = null;
-        let lastZone   = 0;
+        let MODE      = 'gps';
+        let PD4WEB    = null;
+        let GEO_WATCH = null;
 
         const pill      = document.getElementById('gps-pill');
         const slider    = document.getElementById('zone-slider');
@@ -240,47 +368,25 @@
         const btnGps    = document.getElementById('btn-gps');
         const btnSim    = document.getElementById('btn-sim');
 
-        // ── Build zone buttons 1..35 ──────────────────────────────────────
+        // Build zone buttons 1..35
         const zbtnsContainer = document.getElementById('zone-btns');
         for (let z = 1; z <= 35; z++) {
             const b = document.createElement('button');
-            b.className = 'z-btn';
-            b.id = 'zb-' + z;
-            b.textContent = z;
-            b.disabled = true;
+            b.className = 'z-btn'; b.id = 'zb-' + z; b.textContent = z; b.disabled = true;
             b.onclick = () => sendZone(z, 'btn');
             zbtnsContainer.appendChild(b);
         }
 
-        // ── Log helper ────────────────────────────────────────────────────
         function log(msg) {
-            const now = new Date().toLocaleTimeString('en',{hour12:false});
-            pdLog.textContent = `[${now}] ${msg}\n` + pdLog.textContent.slice(0, 400);
+            const t = new Date().toLocaleTimeString('en',{hour12:false});
+            pdLog.textContent = `[${t}] ${msg}\n` + pdLog.textContent.slice(0, 500);
         }
 
-        // ── Send zone to pd ───────────────────────────────────────────────
-        function sendZone(z, source) {
-            z = Math.min(35, Math.max(1, Math.round(z)));
-            if (!PD4WEB) { log('⚠ pd not ready yet'); return; }
-            PD4WEB.sendFloat('zone', z);
-            // Highlight active button
-            document.querySelectorAll('.z-btn').forEach(b => b.classList.remove('active'));
-            const activeBtn = document.getElementById('zb-' + z);
-            if (activeBtn) activeBtn.classList.add('active');
-            // Sync slider
-            slider.value = z;
-            zoneLabel.textContent = z;
-            lastZone = z;
-            log(`→ zone ${z}  [${source}]`);
-        }
-
-        // ── Slider input ──────────────────────────────────────────────────
         function onSliderInput(val) {
             if (MODE !== 'sim') return;
             sendZone(parseInt(val), 'slider');
         }
 
-        // ── Mode toggle ───────────────────────────────────────────────────
         function setMode(mode) {
             MODE = mode;
             if (mode === 'sim') {
@@ -291,64 +397,51 @@
                 document.querySelectorAll('.z-btn').forEach(b => b.disabled = false);
                 pill.className = 'outside';
                 pill.textContent = '🎚 Simulation — drag slider or tap zone';
-                // Stop GPS watch to save battery
                 if (GEO_WATCH !== null) { navigator.geolocation.clearWatch(GEO_WATCH); GEO_WATCH = null; }
-                // Immediately send current slider value
                 sendZone(parseInt(slider.value), 'mode-switch');
-                log('🎚 Switched to SIMULATE mode');
+                log('🎚 SIMULATE mode — drag slider slowly for clean transitions');
             } else {
                 modeLabel.textContent = 'GPS MODE';
                 btnSim.classList.replace('active','inactive');
                 btnGps.classList.replace('inactive','active');
                 slider.disabled = true;
-                document.querySelectorAll('.z-btn').forEach(b => b.disabled = true);
-                document.querySelectorAll('.z-btn').forEach(b => b.classList.remove('active'));
-                pill.className = 'outside';
-                pill.textContent = '📍 Acquiring GPS…';
+                document.querySelectorAll('.z-btn').forEach(b => { b.disabled = true; b.classList.remove('active','pending'); });
+                pill.className = 'outside'; pill.textContent = '📍 Acquiring GPS…';
                 if (PD4WEB) startGeolocation(PD4WEB);
-                log('📡 Switched to GPS mode');
+                log('📡 GPS mode — real coordinates active');
             }
         }
 
-        // ── Geolocation ───────────────────────────────────────────────────
         function startGeolocation(pd) {
             if (!('geolocation' in navigator)) {
-                pill.className = 'error';
-                pill.textContent = '⚠️ GPS not available';
-                log('⚠ GPS API not available in this browser');
-                return;
+                pill.className = 'error'; pill.textContent = '⚠️ GPS not available';
+                log('⚠ Geolocation API not available'); return;
             }
             if (GEO_WATCH !== null) navigator.geolocation.clearWatch(GEO_WATCH);
             GEO_WATCH = navigator.geolocation.watchPosition(
                 (pos) => {
                     if (MODE !== 'gps') return;
-                    const lon = pos.coords.longitude;
-                    const lat = pos.coords.latitude;
+                    const lon = pos.coords.longitude, lat = pos.coords.latitude;
                     const acc = Math.round(pos.coords.accuracy);
                     const inside = pointInPolygon(lon, lat, ZONE_POLYGON);
                     if (inside) {
-                        const progress = projectOntoPolyline(lon, lat, INNER_BORDER);
-                        const zone = progressToZone(progress);
-                        pd.sendFloat('zone', zone);
-                        // Sync UI
-                        slider.value = zone;
-                        zoneLabel.textContent = zone;
-                        document.querySelectorAll('.z-btn').forEach(b => b.classList.remove('active'));
-                        const ab = document.getElementById('zb-' + zone);
-                        if (ab) ab.classList.add('active');
-                        pill.className = 'inside';
-                        pill.textContent = `✅ Zone ${zone}/35  ±${acc}m`;
-                        if (zone !== lastZone) { log(`📍 GPS → zone ${zone}  ±${acc}m`); lastZone = zone; }
+                        const z = progressToZone(projectOntoPolyline(lon, lat, INNER_BORDER));
+                        sendZone(z, 'gps');
+                        if (!morphBusy) {
+                            pill.className = 'inside';
+                            pill.textContent = `✅ Zone ${z}/35  ±${acc}m`;
+                        }
                     } else {
                         pd.sendFloat('zone', 0);
-                        pill.className = 'outside';
-                        pill.textContent = `🚶 Outside route  ±${acc}m`;
-                        if (lastZone !== 0) { log(`🚶 Outside route  ±${acc}m`); lastZone = 0; }
+                        if (!morphBusy) {
+                            pill.className = 'outside';
+                            pill.textContent = `🚶 Outside route  ±${acc}m`;
+                        }
+                        if (lastSentZone !== 0) { log(`🚶 Outside route  ±${acc}m`); lastSentZone = 0; }
                     }
                 },
                 (err) => {
-                    pill.className = 'error';
-                    pill.textContent = `⚠️ GPS: ${err.message}`;
+                    pill.className = 'error'; pill.textContent = `⚠️ GPS: ${err.message}`;
                     log(`⚠ GPS error (${err.code}): ${err.message}`);
                 },
                 { enableHighAccuracy: true, maximumAge: 2000, timeout: 15000 }
@@ -356,7 +449,7 @@
         }
         </script>
 
-        <!-- ── Boot pd4web then wire everything ── -->
+        <!-- Boot pd4web -->
         <script>
             const statusElement   = document.getElementById('status');
             const progressElement = document.getElementById('progress');
@@ -364,8 +457,7 @@
             function fetchWithProgress(url) {
                 return new Promise((resolve, reject) => {
                     const xhr = new XMLHttpRequest();
-                    xhr.open('GET', url, true);
-                    xhr.responseType = 'arraybuffer';
+                    xhr.open('GET', url, true); xhr.responseType = 'arraybuffer';
                     xhr.onprogress = (e) => {
                         if (e.lengthComputable) {
                             const pct = Math.floor((e.loaded / e.total) * 100);
@@ -373,9 +465,7 @@
                             statusElement.textContent = `Loading patch… ${pct}%`;
                         }
                     };
-                    xhr.onload = () => xhr.status === 200
-                        ? resolve(xhr.response)
-                        : reject(new Error(`HTTP ${xhr.status}`));
+                    xhr.onload = () => xhr.status === 200 ? resolve(xhr.response) : reject(new Error('HTTP ' + xhr.status));
                     xhr.onerror = () => reject(new Error('Network error'));
                     xhr.send();
                 });
@@ -390,9 +480,7 @@
                         soundToggleId: 'Pd4WebAudioSwitch',
                     });
                     document.getElementById('wasm-loader').style.display = 'none';
-                    log('✅ Patch loaded — pd4web ready');
-
-                    // Boot in GPS mode by default
+                    log('✅ Patch loaded — tap sound button then try Simulate mode');
                     setMode('gps');
                     startGeolocation(PD4WEB);
                 })
