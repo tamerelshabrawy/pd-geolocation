@@ -3,106 +3,105 @@
  * Pure geolocation logic: route projection, weighted zone mapping, polygon detection.
  * No UI, no pd4web dependencies — fully testable in isolation.
  *
- * The walk is a RECTANGULAR anti-clockwise loop (~1709 m total) in Alexandria, Egypt.
+ * The walk is a RECTANGULAR clockwise loop (~1709 m total) in Alexandria, Egypt.
  * Four sides (from alexandria_pedestrian_route.geojson, right_side feature):
  *
- *   BOTTOM  El Horeya Road      Start (bottom-right) → west → bottom-left corner
- *           coords 0–7          0 % → 18.9 % of arc  (~323 m)
+ *   RIGHT   Safeya Zaghloul St  Start (bottom-right) → north → top-right corner
+ *           coords 0–22         0 % → 37.2 % of arc  (~635 m, longest side)
  *
- *   LEFT    Safeya Zaghloul St  bottom-left corner → north → top-left corner
- *           coords 7–25         18.9 % → 54.8 % of arc  (~613 m, longest side)
+ *   TOP     Seafront / Corniche top-right corner → west → top-left corner
+ *           coords 22–26        37.2 % → 45.2 % of arc  (~138 m, shortest side)
  *
- *   TOP     Seafront / Corniche top-left corner → east → top-right corner
- *           coords 25–29        54.8 % → 62.8 % of arc  (~138 m, shortest side)
+ *   LEFT    El Naby Danial St   top-left corner → south → bottom-left corner
+ *           coords 26–44        45.2 % → 81.1 % of arc  (~613 m)
  *
- *   RIGHT   El Naby Danial St   top-right corner → south → back to start
- *           coords 29–51        62.8 % → 100 % of arc  (~635 m)
+ *   BOTTOM  El Horeya Road      bottom-left corner → east → back to start
+ *           coords 44–51        81.1 % → 100 % of arc  (~323 m)
  *
- * Anti-clockwise direction (as walked):
- *   Start (bottom-right) → WEST along El Horeya → NORTH up Safeya Zaghloul →
- *   EAST along seafront  → SOUTH down El Naby Danial → back to start.
+ * Clockwise direction (as walked):
+ *   Start (bottom-right) → NORTH up Safeya Zaghloul → WEST along seafront →
+ *   SOUTH down El Naby Danial → EAST along El Horeya → back to start.
  *
  * Zones 1–35 map to the route arc with artistic weighting:
- *   Zones  1– 6  Track 1      bottom + start of Safeya Zaghloul  (~18% of arc)
- *   Zones  7–10  Transition   continuing north up Safeya Zaghloul (~ 8% of arc)
- *   Zones 11–25  Track 2      main arc up Safeya Zaghloul         (~32% of arc)
- *   Zones 26–27  Transition   top-left corner + entire seafront   (~ 5% of arc)
- *   Zones 28–31  Track 3      top-right corner + upper El Naby    (~20% of arc)
- *   Zones 32–35  Track 4      lower El Naby Danial back to start  (~17% of arc)
+ *   Zones  1– 6  Track 1      start of Safeya Zaghloul going north (~18% of arc)
+ *   Zones  7–10  Transition   continuing north up Safeya Zaghloul  (~ 8% of arc)
+ *   Zones 11–25  Track 2      upper Safeya Zaghloul + seafront     (~32% of arc)
+ *   Zones 26–27  Transition   top-left corner + upper El Naby      (~ 5% of arc)
+ *   Zones 28–31  Track 3      El Naby Danial going south           (~20% of arc)
+ *   Zones 32–35  Track 4      lower El Naby Danial + El Horeya     (~17% of arc)
  */
 
 /* ─────────────────────────────────────────────────────────────────────────
    ROUTE COORDINATES
    right_side inner route from alexandria_pedestrian_route.geojson
-   [longitude, latitude] — anti-clockwise walk order
+   [longitude, latitude] — clockwise walk order
    Total arc ≈ 1709 m across 4 sides.
    ───────────────────────────────────────────────────────────────────────── */
 const ROUTE_LINE = [
-    // ── BOTTOM: El Horeya Road (going west) ─────────────────────────────
-    // Start: bottom-right corner, where El Horeya meets El Naby Danial
-    // 0 % → 18.9 % of route arc
-    [29.9042715, 31.1971886],
-    [29.9040266, 31.1970967],
-    [29.9038177, 31.1970196],
-    [29.9035612, 31.1969195],
-    [29.9032994, 31.1968217],
-    [29.9030252, 31.1967192],
-    [29.9026919, 31.1965935],
-    [29.9011600, 31.1960329],   // ← bottom-left corner: El Horeya meets Safeya Zaghloul
-
-    // ── LEFT: Safeya Zaghloul Street (going north) ───────────────────────
-    // 18.9 % → 54.8 % of route arc (longest side, ~613 m)
-    [29.9011093, 31.1961634],
-    [29.9010739, 31.1962588],
-    [29.9010204, 31.1963777],
-    [29.9009838, 31.1964567],
-    [29.9009196, 31.1966127],
-    [29.9008214, 31.1968278],
-    [29.9007290, 31.1970330],
-    [29.9005354, 31.1974520],
-    [29.9004363, 31.1976696],
-    [29.9003473, 31.1978637],
-    [29.9002448, 31.1980737],
-    [29.9000878, 31.1984075],
-    [29.8995214, 31.1996210],
-    [29.8993131, 31.1997794],
-    [29.8991065, 31.1999369],
-    [29.8990220, 31.2001435],
-    [29.8988634, 31.2004477],
-    [29.8985785, 31.2010352],   // ← top-left corner: Safeya Zaghloul meets seafront
-
-    // ── TOP: Seafront / Corniche (going east) ────────────────────────────
-    // 54.8 % → 62.8 % of route arc (shortest side, ~138 m)
-    [29.8988268, 31.2011214],
-    [29.8992918, 31.2012976],
-    [29.8995806, 31.2014050],   // ← northernmost point of the route
-
-    // ── RIGHT: El Naby Danial Street (going south) ───────────────────────
-    // 62.8 % → 100 % of route arc (~635 m, closes the rectangle)
-    [29.8996133, 31.2010997],   // ← top-right corner: seafront meets El Naby Danial
-    [29.9003518, 31.2009563],
-    [29.9005950, 31.2007425],
-    [29.9008607, 31.2005171],
-    [29.9011287, 31.2002840],
-    [29.9013854, 31.2000587],
-    [29.9015999, 31.1998636],
-    [29.9019591, 31.1995458],
-    [29.9019591, 31.1995458],
-    [29.9022687, 31.1992511],
-    [29.9025586, 31.1989869],
-    [29.9026791, 31.1988579],
-    [29.9027810, 31.1987394],
-    [29.9029072, 31.1985722],
-    [29.9030305, 31.1984446],
-    [29.9032732, 31.1982327],
-    [29.9034668, 31.1981114],
-    [29.9035805, 31.1980146],
-    [29.9037191, 31.1978710],
-    [29.9039240, 31.1976572],
-    [29.9041345, 31.1974428],
-    // End: back to start (bottom-right corner)
+    // ── RIGHT: Safeya Zaghloul Street (going north) ──────────────────────
+    // Start: bottom-right corner, where El Horeya meets Safeya Zaghloul
+    // 0 % → 37.2 % of route arc (~635 m, longest side)
+    [29.9042702, 31.1971939],
     [29.9042697, 31.1971939],
-    [29.9042702, 31.1971939]
+    [29.9041345, 31.1974428],
+    [29.9039240, 31.1976572],
+    [29.9037191, 31.1978710],
+    [29.9035805, 31.1980146],
+    [29.9034668, 31.1981114],
+    [29.9032732, 31.1982327],
+    [29.9030305, 31.1984446],
+    [29.9029072, 31.1985722],
+    [29.9027810, 31.1987394],
+    [29.9026791, 31.1988579],
+    [29.9025586, 31.1989869],
+    [29.9022687, 31.1992511],
+    [29.9019591, 31.1995458],
+    [29.9019591, 31.1995458],
+    [29.9015999, 31.1998636],
+    [29.9013854, 31.2000587],
+    [29.9011287, 31.2002840],
+    [29.9008607, 31.2005171],
+    [29.9005950, 31.2007425],
+    [29.9003518, 31.2009563],
+    [29.8996133, 31.2010997],   // ← top-right corner: Safeya Zaghloul meets seafront
+
+    // ── TOP: Seafront / Corniche (going west) ────────────────────────────
+    // 37.2 % → 45.2 % of route arc (shortest side, ~138 m)
+    [29.8995806, 31.2014050],   // ← northernmost point of the route
+    [29.8992918, 31.2012976],
+    [29.8988268, 31.2011214],
+    [29.8985785, 31.2010352],   // ← top-left corner: seafront meets El Naby Danial
+
+    // ── LEFT: El Naby Danial Street (going south) ────────────────────────
+    // 45.2 % → 81.1 % of route arc (~613 m)
+    [29.8988634, 31.2004477],
+    [29.8990220, 31.2001435],
+    [29.8991065, 31.1999369],
+    [29.8993131, 31.1997794],
+    [29.8995214, 31.1996210],
+    [29.9000878, 31.1984075],
+    [29.9002448, 31.1980737],
+    [29.9003473, 31.1978637],
+    [29.9004363, 31.1976696],
+    [29.9005354, 31.1974520],
+    [29.9007290, 31.1970330],
+    [29.9008214, 31.1968278],
+    [29.9009196, 31.1966127],
+    [29.9009838, 31.1964567],
+    [29.9010204, 31.1963777],
+    [29.9010739, 31.1962588],
+    [29.9011093, 31.1961634],
+    [29.9011600, 31.1960329],   // ← bottom-left corner: El Naby Danial meets El Horeya
+
+    // ── BOTTOM: El Horeya Road (going east) ─────────────────────────────
+    // 81.1 % → 100 % of route arc (~323 m)
+    [29.9026919, 31.1965935],
+    [29.9030252, 31.1967192],
+    [29.9032994, 31.1968217],
+    [29.9035612, 31.1969195],
+    [29.9038177, 31.1970196],
+    [29.9040266, 31.1970967],
+    [29.9042715, 31.1971886]    // End: back to start (bottom-right corner)
 ];
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -140,58 +139,55 @@ const ZONE_POLYGON = OUTER_BORDER
 
    The four sides of the rectangle and their real arc proportions
    (verified against the GeoJSON, total route ≈ 1709 m):
-     BOTTOM  El Horeya (going west)          0 % →  18.9 %  ~323 m
-     LEFT    Safeya Zaghloul (going north)  18.9 % →  54.8 %  ~613 m
-     TOP     Seafront (going east)          54.8 % →  62.8 %  ~138 m
-     RIGHT   El Naby Danial (going south)   62.8 % → 100.0 %  ~635 m
+     RIGHT   Safeya Zaghloul (going north)   0 % →  37.2 %  ~635 m
+     TOP     Seafront (going west)          37.2 % →  45.2 %  ~138 m
+     LEFT    El Naby Danial (going south)   45.2 % →  81.1 %  ~613 m
+     BOTTOM  El Horeya (going east)         81.1 % → 100.0 %  ~323 m
 
    Artistic rationale per section:
-     Zones  1– 6  (0–18 %):  Track 1 — El Horeya bottom + start of Safeya Zaghloul.
+     Zones  1– 6  (0–18 %):  Track 1 — start of Safeya Zaghloul going north.
                               Compressed: the music opens quickly as the walk begins.
      Zones  7–10  (18–26 %): Transition — settling into the long northward climb.
-     Zones 11–25  (26–58 %): Track 2 — the full stretch of Safeya Zaghloul.
+     Zones 11–25  (26–58 %): Track 2 — upper Safeya Zaghloul + seafront pivot.
                               Stretched: the longest musical arc, peak at zone 23.
-     Zones 26–27  (58–63 %): Transition — top-left corner turn + entire seafront.
-                              Compressed: the seafront is physically very short (~138 m).
-     Zones 28–31  (63–83 %): Track 3 — top-right corner + upper El Naby Danial.
+     Zones 26–27  (58–63 %): Transition — top-left corner turn + upper El Naby Danial.
+                              Compressed: brief pivot southward down El Naby Danial.
+     Zones 28–31  (63–83 %): Track 3 — El Naby Danial going south.
                               Stretched: downtempo, spacious, reaching ~54 % down
                               El Naby Danial (artist intent: "about 30 % of return leg").
-     Zones 32–35  (83–100 %): Track 4 — lower El Naby Danial back to start.
+     Zones 32–35  (83–100 %): Track 4 — lower El Naby Danial + El Horeya back to start.
                               Even spacing for the finale.
    ───────────────────────────────────────────────────────────────────────── */
 const ZONE_BREAKPOINTS = [
-    // ── Track 1: El Horeya Road bottom + start of Safeya Zaghloul (zones 1–6, 0%→18%) ──
-    // Six zones across the bottom side and the first few steps north.
-    // El Horeya naturally ends at ~18.9 % of the arc, so this feels physically
-    // anchored — the music opens up right where the walker turns the corner.
+    // ── Track 1: start of Safeya Zaghloul going north (zones 1–6, 0%→18%) ───────
+    // Six zones across the start of the route heading north up Safeya Zaghloul.
+    // The music opens quickly as the walk begins.
     0.030, 0.060, 0.090, 0.120, 0.150, 0.180,
 
     // ── Transition T1→T2: Safeya Zaghloul lower stretch (zones 7–10, 18%→26%) ─
     // Four zones as the walk heads north and the music begins to open.
     0.200, 0.220, 0.240, 0.260,
 
-    // ── Track 2: main arc up Safeya Zaghloul (zones 11–25, 26%→58%) ──────────
-    // Fifteen zones spanning most of the LEFT side (Safeya Zaghloul).
-    // Zone 23 is the musical peak; the zones spread evenly through this arc.
-    // Safeya Zaghloul ends at ~54.8 % and the seafront begins, so zone 25
-    // intentionally bleeds into the top-left corner turn.
+    // ── Track 2: upper Safeya Zaghloul + seafront (zones 11–25, 26%→58%) ───────
+    // Fifteen zones spanning most of the RIGHT side (Safeya Zaghloul) and
+    // the brief seafront pivot. Zone 23 is the musical peak.
+    // Safeya Zaghloul ends at ~37.2 % and the seafront begins, so zone 25
+    // intentionally bleeds past the top-right corner turn.
     0.2813, 0.3027, 0.3240, 0.3453, 0.3667,
     0.3880, 0.4093, 0.4307, 0.4520, 0.4733,
     0.4947, 0.5160, 0.5373, 0.5587, 0.5800,
 
-    // ── Transition T2→T3: top-left corner + entire seafront (zones 26–27, 58%→63%) ─
-    // Two zones covering the turn at the top-left corner AND the entire short
-    // seafront/corniche (physically only ~138 m, i.e. 54.8%→62.8 % of arc).
-    // Compressed deliberately — the seafront is a brief, dramatic pivot.
+    // ── Transition T2→T3: top-left corner + upper El Naby Danial (zones 26–27, 58%→63%) ─
+    // Two zones covering the turn at the top-left corner AND the start of
+    // El Naby Danial going south. Compressed deliberately — a brief pivot.
     0.6050, 0.6300,
 
-    // ── Track 3: El Naby Danial upper section (zones 28–31, 63%→83%) ────────
-    // Four zones, each ~5 % wide — downtempo and spacious. Begins at the
-    // top-right corner (62.8 % of arc) and stretches about 54 % down
-    // El Naby Danial before handing off to Track 4.
+    // ── Track 3: El Naby Danial going south (zones 28–31, 63%→83%) ─────────
+    // Four zones, each ~5 % wide — downtempo and spacious. Spans about
+    // 54 % of El Naby Danial before handing off to Track 4.
     0.6800, 0.7300, 0.7800, 0.8300,
 
-    // ── Track 4: El Naby Danial lower + back to start (zones 32–35, 83%→100%) ─
+    // ── Track 4: lower El Naby Danial + El Horeya back to start (zones 32–35, 83%→100%) ─
     // Four evenly-spaced zones for the finale heading back to the start point.
     0.8725, 0.9150, 0.9575, 1.0000
 ];
