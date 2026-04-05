@@ -159,37 +159,14 @@ const ZONE_POLYGON = OUTER_BORDER
                               Even spacing for the finale.
    ───────────────────────────────────────────────────────────────────────── */
 const ZONE_BREAKPOINTS = [
-    // ── Track 1: start of Safeya Zaghloul going north (zones 1–6, 0%→18%) ───────
-    // Six zones across the start of the route heading north up Safeya Zaghloul.
-    // The music opens quickly as the walk begins.
-    0.030, 0.060, 0.090, 0.120, 0.150, 0.180,
-
-    // ── Transition T1→T2: Safeya Zaghloul lower stretch (zones 7–10, 18%→26%) ─
-    // Four zones as the walk heads north and the music begins to open.
-    0.200, 0.220, 0.240, 0.260,
-
-    // ── Track 2: upper Safeya Zaghloul + seafront (zones 11–25, 26%→58%) ───────
-    // Fifteen zones spanning most of the RIGHT side (Safeya Zaghloul) and
-    // the brief seafront pivot. Zone 23 is the musical peak.
-    // Safeya Zaghloul ends at ~37.2 % and the seafront begins, so zone 25
-    // intentionally bleeds past the top-right corner turn.
-    0.2813, 0.3027, 0.3240, 0.3453, 0.3667,
-    0.3880, 0.4093, 0.4307, 0.4520, 0.4733,
-    0.4947, 0.5160, 0.5373, 0.5587, 0.5800,
-
-    // ── Transition T2→T3: top-left corner + upper El Naby Danial (zones 26–27, 58%→63%) ─
-    // Two zones covering the turn at the top-left corner AND the start of
-    // El Naby Danial going south. Compressed deliberately — a brief pivot.
-    0.6050, 0.6300,
-
-    // ── Track 3: El Naby Danial going south (zones 28–31, 63%→83%) ─────────
-    // Four zones, each ~5 % wide — downtempo and spacious. Spans about
-    // 54 % of El Naby Danial before handing off to Track 4.
-    0.6800, 0.7300, 0.7800, 0.8300,
-
-    // ── Track 4: lower El Naby Danial + El Horeya back to start (zones 32–35, 83%→100%) ─
-    // Four evenly-spaced zones for the finale heading back to the start point.
-    0.8725, 0.9150, 0.9575, 1.0000
+    0.205, 0.220, 0.235, 0.250, 0.265, 0.280,
+    0.302, 0.325, 0.348, 0.370,
+    0.383, 0.396, 0.409, 0.422, 0.435,
+    0.448, 0.461, 0.474, 0.487, 0.500,
+    0.513, 0.526, 0.539, 0.552, 0.560,
+    0.600, 0.640,
+    0.677, 0.715, 0.752, 0.790,
+    0.852, 0.915, 0.957, 1.000
 ];
 
 /* ─────────────────────────────────────────────────────────────────────────
