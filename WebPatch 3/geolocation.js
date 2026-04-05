@@ -145,28 +145,33 @@ const ZONE_POLYGON = OUTER_BORDER
      BOTTOM  El Horeya (going east)         81.1 % → 100.0 %  ~323 m
 
    Artistic rationale per section:
-     Zones  1– 6  (0–18 %):  Track 1 — start of Safeya Zaghloul going north.
-                              Compressed: the music opens quickly as the walk begins.
-     Zones  7–10  (18–26 %): Transition — settling into the long northward climb.
-     Zones 11–25  (26–58 %): Track 2 — upper Safeya Zaghloul + seafront pivot.
-                              Stretched: the longest musical arc, peak at zone 23.
-     Zones 26–27  (58–63 %): Transition — top-left corner turn + upper El Naby Danial.
-                              Compressed: brief pivot southward down El Naby Danial.
-     Zones 28–31  (63–83 %): Track 3 — El Naby Danial going south.
-                              Stretched: downtempo, spacious, reaching ~54 % down
-                              El Naby Danial (artist intent: "about 30 % of return leg").
-     Zones 32–35  (83–100 %): Track 4 — lower El Naby Danial + El Horeya back to start.
-                              Even spacing for the finale.
+     Zones  1– 6  (0–9.3 %):   Track 1 — first 25% of Safeya Zaghloul. Music opens quickly.
+     Zones  7–10  (9.3–18.6 %): Transition — next 25% of Safeya Zaghloul.
+     Zones 11–25  (18.6–37.2 %): Track 2 — upper 50% of Safeya Zaghloul. Ends at seafront.
+     Zones 26–27  (37.2–45.2 %): Transition — entire seafront.
+     Zones 28–31  (45.2–57.1 %): Track 3 — top 33% of El Naby Danial.
+     Zones 32–35  (57.1–100 %): Track 4 — remaining El Naby Danial + all El Horeya.
    ───────────────────────────────────────────────────────────────────────── */
 const ZONE_BREAKPOINTS = [
-    0.205, 0.220, 0.235, 0.250, 0.265, 0.280,
-    0.302, 0.325, 0.348, 0.370,
-    0.383, 0.396, 0.409, 0.422, 0.435,
-    0.448, 0.461, 0.474, 0.487, 0.500,
-    0.513, 0.526, 0.539, 0.552, 0.560,
-    0.600, 0.640,
-    0.677, 0.715, 0.752, 0.790,
-    0.852, 0.915, 0.957, 1.000
+    // ── Track 1: zones 1–6 (0%→9.3%) — first 25% of Safeya Zaghloul ────────
+    0.0155, 0.0310, 0.0465, 0.0620, 0.0775, 0.0930,
+
+    // ── Transition: zones 7–10 (9.3%→18.6%) — next 25% of Safeya Zaghloul ──
+    0.1163, 0.1395, 0.1628, 0.1860,
+
+    // ── Track 2: zones 11–25 (18.6%→37.2%) — upper 50% of Safeya Zaghloul ──
+    0.1984, 0.2108, 0.2232, 0.2356, 0.2480,
+    0.2604, 0.2728, 0.2852, 0.2976, 0.3100,
+    0.3224, 0.3348, 0.3472, 0.3596, 0.3720,
+
+    // ── Transition: zones 26–27 (37.2%→45.2%) — entire seafront ───────────
+    0.4120, 0.4520,
+
+    // ── Track 3: zones 28–31 (45.2%→57.1%) — top ~33% of El Naby Danial ────
+    0.4817, 0.5114, 0.5411, 0.5710,
+
+    // ── Track 4: zones 32–35 (57.1%→100%) — rest of El Naby + El Horeya ────
+    0.6782, 0.7855, 0.8927, 1.0000
 ];
 
 /* ─────────────────────────────────────────────────────────────────────────
