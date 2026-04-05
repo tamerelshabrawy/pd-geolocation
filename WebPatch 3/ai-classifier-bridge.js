@@ -244,7 +244,6 @@
             'car': 300,
             'vehicle horn, car horn, honking': 302,
             'air horn, truck horn': 303,
-            'honking': 302,
             'engine': 304,
             'engine starting': 305,
             'truck': 306,
@@ -277,7 +276,7 @@
                 }
             });
         });
-        console.log('[AiClassifierBridge] Resolved ' + totalMatched + ' class-name→index mappings across 5 categories.');
+        console.log('[AiClassifierBridge] Resolved ' + totalMatched + ' class-name→index mappings across 6 categories.');
         return result;
     }
 
@@ -541,8 +540,8 @@
             catMaxScores[cat] = max;
         });
 
-        /* 2. Softmax over the 5 category scores → normalised probabilities
-              (silence is handled separately via RMS threshold) */
+        /* 2. Softmax over the 5 non-silence category scores → normalised probabilities
+              (silence is the 6th class, handled separately via RMS threshold) */
         var catNames  = Object.keys(CLASS_MAP); // ['horn','chatter','traffic','birds','sea']
         var logScores = catNames.map(function (c) { return Math.log(catMaxScores[c] + EPSILON); });
         var softmaxed = softmax(logScores);
