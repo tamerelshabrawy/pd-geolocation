@@ -557,7 +557,9 @@ function addArrow(t, colour) {
   const OFFSET = 0.003; // small progress offset for heading
   const p1 = pointAtProgress(ROUTE_LINE, cumLengths, Math.max(0, t - OFFSET));
   const p2 = pointAtProgress(ROUTE_LINE, cumLengths, Math.min(1, t + OFFSET));
-  const angle = Math.atan2(p2[1] - p1[1], p2[0] - p1[0]) * 180 / Math.PI;
+  // Bearing clockwise from north, with cosLat metric correction for longitude at ~31°N
+  const cosLat = Math.cos((p1[0] + p2[0]) / 2 * Math.PI / 180);
+  const angle = Math.atan2((p2[1] - p1[1]) * cosLat, p2[0] - p1[0]) * 180 / Math.PI;
 
   const icon = L.divIcon({
     html: `<div style="
@@ -565,7 +567,7 @@ function addArrow(t, colour) {
       border-left: 7px solid transparent;
       border-right: 7px solid transparent;
       border-bottom: 14px solid ${colour};
-      transform: rotate(${angle - 90}deg);
+      transform: rotate(${angle}deg);
       transform-origin: center center;
       filter: drop-shadow(0 0 3px rgba(0,0,0,0.6));
     "></div>`,
