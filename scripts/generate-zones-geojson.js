@@ -7,7 +7,7 @@
  *
  * Features generated:
  *  - 1 full-route LineString
- *  - 6 track-coloured segment LineStrings
+ *  - 6 track-colored segment LineStrings
  *  - 35 zone Point features (midpoint of each arc segment)
  */
 
